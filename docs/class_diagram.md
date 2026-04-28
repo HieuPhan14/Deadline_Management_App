@@ -109,6 +109,7 @@ classDiagram
     +String filepath
     +String tab1_name
     +String tab2_name
+    +detect_tabs(sheet_names) dict
     +parse() ParseResult
     +parse_tab1() list~DocumentRow~
     +parse_tab2() list~DirectiveRow~

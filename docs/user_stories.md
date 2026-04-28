@@ -30,7 +30,10 @@
 
 **Acceptance criteria:**
 - Admin can upload a `.xlsx` file via a file picker
-- The system reads both tabs: `Theo dõi CV Tháng 4` and `Chỉ đạo LĐP giao ban`
+- The system reads all tab names from the uploaded file and displays them
+- App auto-detects and pre-selects the most likely tab for each role using fuzzy matching
+- Admin can override the selection via dropdown before confirming
+- No tab names are hardcoded — app works regardless of tab name changes
 - Vietnamese text (UTF-8) is parsed correctly
 - A preview of parsed rows is shown before confirming the import
 - Admin can cancel the import after seeing the preview

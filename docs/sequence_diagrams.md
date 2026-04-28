@@ -46,10 +46,16 @@ sequenceDiagram
   participant DB as PostgreSQL
  
   Admin->>React: selects .xlsx file
-  React->>API: POST /import/preview (multipart)
+  React->>API: POST /import/detect-tabs (multipart)
   API->>Parser: load_workbook(file)
-  Parser->>Parser: read tab 1 — Theo dõi CV
-  Parser->>Parser: read tab 2 — Chỉ đạo LĐP
+  Parser->>Parser: read all sheet names
+  Parser->>Parser: fuzzy match best tab for each role
+  API-->>React: sheet names + suggested selections
+  React-->>Admin: shows tab dropdowns with pre-selected tabs
+  Admin->>React: confirms or overrides tab selection
+  React->>API: POST /import/preview + selected tab names
+  API->>Parser: parse tab 1 with selected name
+  API->>Parser: parse tab 2 with selected name
   Parser->>Parser: extract staff names
   Parser->>Parser: extract deadlines from free text
   Parser->>Parser: flag rows with no deadline found
