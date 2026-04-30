@@ -13,6 +13,8 @@ class AuditLog(Base):
     action = Column(String, nullable=False)
     old_values = Column(JSONB)
     new_values = Column(JSONB)
-    changed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    changed_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
     changed_at = Column(DateTime(timezone=True), nullable=False, default=lambda:datetime.now(timezone.utc))
 
+    def __repr__(self) -> str:
+        return f"<AuditLog {self.table_name} {self.action}>"

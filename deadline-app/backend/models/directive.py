@@ -27,7 +27,7 @@ class Directive(Base):
     result = Column(Text)
     notes = Column(Text)
     imported_at = Column(DateTime(timezone=True), nullable=False, default=lambda:datetime.now(timezone.utc))
-    imported_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    imported_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
 
     def is_overdue(self) -> bool:
         ...
