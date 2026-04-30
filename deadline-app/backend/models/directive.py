@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, String, Boolean, DateTime, Integer, Date, Text, ForeignKey
+from sqlalchemy import UniqueConstraint, Table, Column, String, Boolean, DateTime, Integer, Date, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from database import Base
 from uuid import uuid4
@@ -9,7 +9,8 @@ directive_assignees = Table(
     Base.metadata,
     Column("id", UUID(as_uuid=True), primary_key=True, default=uuid4),
     Column("directive_id", UUID(as_uuid=True), ForeignKey("directives.id", ondelete="CASCADE"), nullable=False),
-    Column("staff_id", UUID(as_uuid=True), ForeignKey("staff.id", ondelete="CASCADE"), nullable=False)
+    Column("staff_id", UUID(as_uuid=True), ForeignKey("staff.id", ondelete="CASCADE"), nullable=False),
+    UniqueConstraint("directive_id", "staff_id", name="uq_directive_staff")
 )
 
 class Directive(Base):

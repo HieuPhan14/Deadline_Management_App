@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, String, Boolean, DateTime, Integer, Date, Text, ForeignKey
+from sqlalchemy import UniqueConstraint, Table, Column, String, Boolean, DateTime, Integer, Date, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from database import Base
 from uuid import uuid4
@@ -10,6 +10,7 @@ document_assignees = Table(
     Column("id", UUID(as_uuid=True), primary_key=True, default=uuid4),
     Column("document_id", UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False),
     Column("staff_id", UUID(as_uuid=True), ForeignKey("staff.id", ondelete="CASCADE"), nullable=False),
+    UniqueConstraint("document_id", "staff_id", name="uq_document_staff")
 )
 
 class Document(Base):
