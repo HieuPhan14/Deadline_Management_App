@@ -42,6 +42,7 @@ CREATE TABLE documents (
     recurrence_label    VARCHAR(100),
     status              VARCHAR(50) NOT NULL DEFAULT 'pending'
                         CHECK (status IN ('pending', 'in_progress', 'overdue', 'done', 'cancelled')),
+    result              TEXT,
     notes               TEXT,
     imported_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     imported_by         UUID REFERENCES users(id) ON DELETE SET NULL

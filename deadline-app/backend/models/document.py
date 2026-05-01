@@ -28,6 +28,7 @@ class Document(Base):
     recurrence_label = Column(String)
     status = Column(String, nullable=False, default="pending")
     notes = Column(Text)
+    result = Column(Text)
     imported_at = Column(DateTime(timezone=True), nullable=False, default=lambda:datetime.now(timezone.utc))
     imported_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
