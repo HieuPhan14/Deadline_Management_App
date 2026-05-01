@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 from contextlib import asynccontextmanager
 from routers.auth import router as auth_router
+from models.user import User
+from routers.deps import get_current_user
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,3 +33,12 @@ app.include_router(auth_router)
 @app.get("/")
 async def root():
     return {"message": "Deadline Management App API"}
+
+@app.get("/me")
+async def get_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "role": current_user.role
+    }
