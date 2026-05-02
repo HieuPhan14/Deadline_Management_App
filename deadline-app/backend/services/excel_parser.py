@@ -3,6 +3,7 @@ import re
 from rapidfuzz import fuzz
 from dateutil.parser import parse as parse_date
 from dateutil.parser import ParserError
+from datetime import date
 
 class ExcelParser:
     TAB1_HEADER_ROW = 6 # data starts at row 6 in Tab 1
@@ -51,6 +52,12 @@ class ExcelParser:
         if not text:
             return None
         
+        # if already a date or datetime obj - return directly
+        if isinstance(text, date):
+            return text
+        if hasattr(text, 'date'):
+            return text.date()
+
         text = str(text)
 
         pattern = r'\d{1,2}/\d{1,2}/\d{4}'
@@ -64,6 +71,21 @@ class ExcelParser:
             
         return None
     
+    def _parse_date(self, value) -> date:
+        if value is None:
+            return None
+        
+        # already a date
+        if hasattr(value, 'date'):
+            return value.date()
+        if isinstance(value, date):
+            return value
+        #string date - parse it
+        try:
+            return parse_date(str(value), dayfirst=True).date()
+        except (ParserError, ValueError):
+            return None
+
     def parse_tab1(self, sheet) -> tuple:
         documents = []
         flagged = []
@@ -73,8 +95,8 @@ class ExcelParser:
             if not any(row):
                 continue
 
-            row_number    = row[0]
-            received_date = row[1]
+            row_number    = int(row[0]) if row[0] else None
+            received_date = self._parse_date(row[1])
             doc_type      = row[2]
             content       = row[3]
             reference     = row[4]
@@ -106,10 +128,12 @@ class ExcelParser:
                 "staff_names": staff_names
             }
 
+            #always import the document regardless 
+            documents.append(doc)
+
+            #separately track which ones need admin attention
             if not deadline and not is_recurring:
                 flagged.append({**doc, "flag_reason": "deadline not found"})
-            else:
-                documents.append(doc)
 
         return (documents, flagged)
     
@@ -121,8 +145,8 @@ class ExcelParser:
             if not any(row):
                 continue
 
-            row_number    = row[0]
-            meeting_date  = row[1]
+            row_number    = int(row[0]) if row[0] else None
+            meeting_date  = self._parse_date(row[1])
             content       = row[2]
             staff_text    = row[3]
             deadline_text = row[4]
@@ -138,9 +162,7 @@ class ExcelParser:
             if is_recurring:
                 deadline = None
             else:
-                deadline = self.extract_deadline(
-                    str(deadline_text) if deadline_text else ""
-                )
+                deadline = self.extract_deadline(deadline_text)
 
             staff_names = self.extract_staff_names(staff_text)
             status = "pending"
@@ -158,11 +180,10 @@ class ExcelParser:
                 "staff_names": staff_names
             }
 
+            directives.append(directive)
             if not deadline and not is_recurring:
                 flagged.append({**directive, "flag_reason": "deadline not found"})
-            else:
-                directives.append(directive)
-
+                
         return (directives, flagged)
 
     def parse(self, tab1_name: str, tab2_name:str) -> dict:

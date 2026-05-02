@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from routers.auth import router as auth_router
 from models.user import User
 from routers.deps import get_current_user
+from routers.import_ import router as import_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(import_router)
 
 @app.get("/")
 async def root():
@@ -42,3 +44,4 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "full_name": current_user.full_name,
         "role": current_user.role
     }
+
