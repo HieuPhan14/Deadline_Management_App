@@ -7,13 +7,16 @@ from models.user import User
 from routers.deps import get_current_user
 from routers.import_ import router as import_router
 from routers.dashboard import router as dashboard_router
+from services.scheduler import start_scheduler, stop_scheduler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # startup - run when app starts
     Base.metadata.create_all(bind=engine)
+    start_scheduler()
     yield
     # shutdown - runs when app stops
+    stop_scheduler()
 
 app = FastAPI(
     title="Deadline Management App",
