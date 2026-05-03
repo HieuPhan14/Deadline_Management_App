@@ -6,6 +6,7 @@ from routers.auth import router as auth_router
 from models.user import User
 from routers.deps import get_current_user
 from routers.import_ import router as import_router
+from routers.dashboard import router as dashboard_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,6 +32,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(import_router)
+app.include_router(dashboard_router)
 
 @app.get("/")
 async def root():
