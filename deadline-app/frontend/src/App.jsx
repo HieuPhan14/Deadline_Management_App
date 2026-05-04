@@ -1,8 +1,23 @@
+<<<<<<< Updated upstream
 import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import './App.css'
+=======
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './context/useAuth'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import StaffDetail from './pages/StaffDetail'
+import Import from './pages/Import'
+import TaskCard from './components/TaskCard'
+
+function PrivateRoute({ children }) {
+  const { token } = useAuth()
+  return token ? children : <Navigate to="/login" />
+}
+>>>>>>> Stashed changes
 
 function App() {
   const [count, setCount] = useState(0)
