@@ -10,3 +10,17 @@ export const getStaffList = async () => {
     return response.data
 }
 
+export const detectTabs = async (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await client.post('/import/detect-tabs', formData)
+    return response.data
+}
+
+export const previewImport = async (file, tab1Name, tab2Name) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await client.post(
+        `/import/preview?`
+    )
+}
