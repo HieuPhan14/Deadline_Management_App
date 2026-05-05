@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from schemas.import_ import DetectTabsResponse, ImportSummary
 from routers.deps import get_current_user
 from sqlalchemy.orm import Session
@@ -55,6 +55,18 @@ async def confirm_import(
     contents = await file.read()
     parser = ExcelParser(io.BytesIO(contents))
     result = parser.parse(tab1_name, tab2_name)
+
+    #check duplicates file name imported
+    recent_import = db.query(ImportLog).filter(
+        ImportLog.filename == file.filename,
+        ImportLog.source_tab == f"{tab1_name} | {tab2_name}"
+    ).first()
+
+    if recent_import:
+        raise HTTPException(
+            status_code=400,
+            detail=f"This file was already imported on {recent_import.imported_at.date()}"
+        )
 
     #1. upsert staff
     staff_map = {}
