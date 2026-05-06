@@ -41,13 +41,12 @@ export default function Import() {
 
     const handleConfirm = async () => {
         setLoading(true)
-        SpeechSynthesisErrorEvent(null)
         try {
             const data = await confirmImport(file, tab1, tab2)
             setResult(data)
             setStep(3)
         } catch (err) {
-            SpeechSynthesisErrorEvent(err.response?.data?.detail || 'Import failed')
+            alert(err.response?.data?.detail || 'Import failed')
         } finally {
             setLoading(false)
         }
