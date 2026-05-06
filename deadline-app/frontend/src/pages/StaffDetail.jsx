@@ -23,21 +23,27 @@ export default function StaffDetail() {
         fetchTasks()
     }, [staffId])
 
-    if (loading) return <div>Loading...</div>
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading...</div>
 
     return (
-        <div>
-            <button onClick={() => navigate('/dashboard')}>
-                Back
-            </button>
-            <h1>Staff Tasks</h1>
-            {tasks.length === 0
-                ? <p>No task assigned</p>
-                : tasks.map(task => (
-                    <TaskCard key={task.id} task={task} />
-                ))
-
-            }
+        <div className="min-h-screen bg-gray-100 p-6">
+            <div className="bg-white rounded-2xl shadow-lg p-8 max-w-2xl mx-auto">
+                <button 
+                    onClick={() => navigate('/dashboard')}
+                    className="text-sm text-blue-600 hover:underline mb-4 block"
+                >Back to Dashboard
+                </button>
+                <h1 className="text-2xl font-bold text-gray-800 mb-6">Staff Tasks</h1>
+                {tasks.length === 0
+                    ? <p className="text-sm text-gray-500">No task assigned</p>
+                    :
+                    <div className="space-y-2">
+                        {tasks.map(task => (
+                            <TaskCard key={task.id} task={task} />
+                        ))}
+                    </div>
+                }
+            </div>
         </div>
     )
 }

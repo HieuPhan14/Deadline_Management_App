@@ -53,104 +53,121 @@ export default function Import() {
     }
 
     return (
-        <div>
-            <button onClick={() => navigate('/dashboard')}>Back</button>
-            <h1>Import Excel</h1>
+        <div className="min-h-screen bg-gray-100 p-6">
+            <div className="bg-white rounded-2xl shadow-lg p-8 max-w-2xl mx-auto">
+                <button 
+                    onClick={() => navigate('/dashboard')}
+                    className="text-sm text-blue-600 hover:underline mb-4 block"
+                    >Back to Dashboard
+                </button>
 
-            {/* Step 1 -- upload and tab selection */}
-            {step === 1 && (
-                <div>
-                    <input 
-                        type="file"
-                        accept=".xlsx"
-                        onChange={handleFileChange}
-                    />
+                <h1 className="text-2xl font-bold text-gray-800 mb-6">Import Excel</h1>
 
-                    {sheetNames.length > 0 && (
-                        <div>
+                {/* Step 1 -- upload and tab selection */}
+                {step === 1 && (
+                    <div>
+                        <input 
+                            type="file"
+                            accept=".xlsx"
+                            onChange={handleFileChange}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+
+                        {sheetNames.length > 0 && (
                             <div>
-                                <label>Document tracking tab (Tab1)</label>
-                                <select
-                                    value={tab1}
-                                    onChange={(e) => setTab1(e.target.value)}
-                                >
-                                    {sheetNames.map(name => (
-                                        <option key={name} value={name}>{name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                               
-                            <div>
-                                <label>Directives tab (Tab2)</label>
-                                <select
-                                    value={tab2}
-                                    onChange={(e) => setTab2(e.target.value)}
-                                >
-                                    {sheetNames.map(name => (
-                                        <option key={name} value={name}>{name}</option>
-                                    ))}
-                                </select>
-                            </div>
+                                <div className="mt-4 space-y-3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Document tracking tab (Tab1)</label>
+                                    <select
+                                        value={tab1}
+                                        onChange={(e) => setTab1(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        {sheetNames.map(name => (
+                                            <option key={name} value={name}>{name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                
+                                <div className="mt-4 space-y-3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Directives tab (Tab2)</label>
+                                    <select
+                                        value={tab2}
+                                        onChange={(e) => setTab2(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        {sheetNames.map(name => (
+                                            <option key={name} value={name}>{name}</option>
+                                        ))}
+                                    </select>
+                                </div>
 
+                                <button
+                                    onClick={handlePreview}
+                                    disabled={loading}
+                                    className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg transition-colors"
+                                >
+                                    {loading ? 'Loading...' : 'Preview Import'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Step 2 - Preview */}
+                {step === 2 && preview && (
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-800 mb-3">Preview</h2>
+                        <p className="text-sm text-gray-600">Documents: {preview.summary.documents_parsed}</p>
+                        <p className="text-sm text-gray-600">Directives: {preview.summary.directives_parsed}</p>
+                        <p className="text-sm text-gray-600">Staff found: {preview.summary.staff_found}</p>
+                        <p className="text-sm text-gray-600">Flagged (no deadline): {preview.summary.total_flagged}</p>
+
+                        {preview.flagged.length > 0 && (
+                            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <h3 className="text-sm font-semibold text-yellow-700 mb-2">Flagged rows - no deadline found</h3>
+                                {preview.flagged.slice(0, 5).map((row, i) => (
+                                    <p key={i} className="text-sm text-yellow-800">{row.content_summary || row.directive_content}</p>
+                                ))}
+                                {preview.flagged.length > 5 && (
+                                    <p className="text-sm text-yellow-600 mt-1">... and {preview.flagged.length - 5} more</p>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="mt-6 flex gap-3">
+                            <button 
+                                onClick={() => setStep(1)}
+                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                                >Back</button>
                             <button
-                                onClick={handlePreview}
+                                onClick={handleConfirm}
                                 disabled={loading}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg transition-colors"
                             >
-                                {loading ? 'Loading...' : 'Preview Import'}
+                                {loading ? 'Importing...' : "Confirm Import"}
                             </button>
                         </div>
-                    )}
-                </div>
-            )}
 
-            {/* Step 2 - Preview */}
-            {step === 2 && preview && (
-                <div>
-                    <h2>Preview</h2>
-                    <p>Documents: {preview.summary.documents_parsed}</p>
-                    <p>Directives: {preview.summary.directives_parsed}</p>
-                    <p>Staff found: {preview.summary.staff_found}</p>
-                    <p>Flagged (no deadline): {preview.summary.total_flagged}</p>
+                    </div>
+                )}
 
-                    {preview.flagged.length > 0 && (
-                        <div>
-                            <h3>Flagged rows - no deadline found</h3>
-                            {preview.flagged.slice(0, 5).map((row, i) => (
-                                <p key={i}>{row.content_summary || row.directive_content}</p>
-                            ))}
-                            {preview.flagged.length > 5 && (
-                                <p>... and {preview.flagged.length - 5} more</p>
-                            )}
-                        </div>
-                    )}
-
+                {/* Step 3 - Done */}
+                {step === 3 && result && (
                     <div>
-                        <button onClick={() => setStep(1)}>Back</button>
-                        <button
-                            onClick={handleConfirm}
-                            disabled={loading}
-                        >
-                            {loading ? 'Importing...' : "Confirm Import"}
+                        <h2 className="text-lg font-semibold text-gray-800 mb-3">Import Complete</h2>
+                        <p className="text-sm text-gray-600">Documents imported: {result.documents_parsed}</p>
+                        <p className="text-sm text-gray-600">Directives imported: {result.directives_parsed}</p>
+                        <p className="text-sm text-gray-600">Staff found: {result.staff_found}</p>
+                        <p className="text-sm text-gray-600">Flagged rows: {result.total_flagged}</p>
+                        <button 
+                            onClick={() => navigate('/dashboard')}
+                            className="mt-6 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                            >
+                            Go to Dashboard
                         </button>
                     </div>
-
-                </div>
-            )}
-
-            {/* Step 3 - Done */}
-            {step === 3 && result && (
-                <div>
-                    <h2>Import Complete</h2>
-                    <p>Documents imported: {result.documents_parsed}</p>
-                    <p>Directives imported: {result.directives_parsed}</p>
-                    <p>Staff found: {result.staff_found}</p>
-                    <p>Flagged rows: {result.total_flagged}</p>
-                    <button onClick={() => navigate('/dashboard')}>
-                        Go to Dashboard
-                    </button>
-                </div>
-            )}
-
+                )}
+            </div>
         </div>
     )
 }

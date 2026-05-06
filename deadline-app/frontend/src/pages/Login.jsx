@@ -28,34 +28,51 @@ export default function Login() {
     }
 
     return (
-        <div>
-            <div>
-                <h1>Deadline Management</h1>
-                {error && <p>{error}</p>}
-                <form onSubmit={handleSubmit}>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className=""
-                        placeholder="Email"
-                        required
-                    />
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className=""
-                        placeholder="Password"
-                        required
-                    />
-                    <button 
-                        type="submit" 
-                        className=""
-                        disabled={loading}>
-                        {loading ? 'Signing in...' : 'Sign in'}
-                    </button>
-                </form>
+        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+            <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-md">
+                <div className="mb-8 text-center">
+                    <h1 className="text-2xl font-bold text-gray-800">Deadline Management</h1>
+                    <p className="text-sm text-gray-500 mt-1 mb-10">Sign in to your account</p>
+                    
+                    {error && (
+                        <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Email"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Password"
+                                required
+                            />
+                        </div>
+
+                        <button 
+                            type="submit" 
+                            className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg text-sm transition-colors"
+                            disabled={loading}>
+                            {loading ? 'Signing in...' : 'Sign in'}
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     )

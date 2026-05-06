@@ -19,11 +19,11 @@ export default function TaskCard({ task }) {
 
     return (
         <div className={clsx(
-            'border',
+            'bg-white rounded-xl p-4 border-l-4 shadow-sm space-y-1 mb-2',
             borderColor
         )}>
-            <p>{task.content}</p>
-            <div>
+            <p className="text-sm font-medium text-gray-800">{task.content}</p>
+            <div className="flex items-center justify-between text-xs text-gray-500">
                 <span>{getDeadlineText(task)}</span>
 
                 {task.staff_names.length > 0 && (
