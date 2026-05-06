@@ -19,7 +19,7 @@ jobs:
 
             - name: Install dependencies
               working-directory: deadline-app/backend
-              run: pip install -r deadline-app/backend/requirements.txt
+              run: pip install -r requirements.txt
 
             - name: Run tests
               working-directory: deadline-app/backend
