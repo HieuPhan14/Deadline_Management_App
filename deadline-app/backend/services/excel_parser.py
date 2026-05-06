@@ -3,7 +3,7 @@ import re
 from rapidfuzz import fuzz
 from dateutil.parser import parse as parse_date
 from dateutil.parser import ParserError
-from datetime import date
+from datetime import date, datetime
 
 class ExcelParser:
     TAB1_HEADER_ROW = 6 # data starts at row 6 in Tab 1
@@ -53,10 +53,10 @@ class ExcelParser:
             return None
         
         # if already a date or datetime obj - return directly
+        if isinstance(text, datetime):
+            return text.date()
         if isinstance(text, date):
             return text
-        if hasattr(text, 'date'):
-            return text.date()
 
         text = str(text)
 
