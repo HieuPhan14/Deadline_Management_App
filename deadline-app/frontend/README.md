@@ -1,16 +1,58 @@
-# React + Vite
+# Deadline Management App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack deadline tracking system built for a Vietnamese hospital admin department (P.HCQT).
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**Backend:** FastAPI, PostgreSQL, SQLAlchemy, APScheduler
+**Frontend:** React, Vite, Tailwind CSS
+**Infrastructure:** Docker, Docker Compose
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Excel import with fuzzy Vietnamese tab detection
+- Automatic overdue detection via background scheduler
+- Urgency tiers: overdue, red, yellow, green
+- Staff drill-down view
+- JWT authentication
+- Full audit logging
 
-## Expanding the ESLint configuration
+## Running with Docker
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Clone the repo
+2. Create `.env` in root:
+\```
+POSTGRES_PASSWORD=yourpassword
+SECRET_KEY=yoursecretkey
+\```
+3. Run:
+\```bash
+docker compose up --build
+\```
+4. Open http://localhost:5173
+5. Login: admin@deadline-app.local / admin123
+
+## Running locally
+
+**Backend:**
+\```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+\```
+
+**Frontend:**
+\```bash
+cd frontend
+npm install
+npm run dev
+\```
+
+## Architecture
+
+3-tier layered monolith designed for local network deployment, scalable to cloud without code changes.
+
+- `backend/` — FastAPI REST API
+- `frontend/` — React SPA
+- `db/` — PostgreSQL schema
+- `docs/` — Architecture docs, ERD, sequence diagrams
