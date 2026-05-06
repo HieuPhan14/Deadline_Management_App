@@ -18,11 +18,11 @@ jobs:
                     python-version: '3.11'
 
             - name: Install dependencies
-              run: pip install -r backend/requirements.txt
+              run: pip install -r deadline-app/backend/requirements.txt
 
             - name: Run tests
               run: pytest tests/ -v
-              working-directory: backend
+              working-directory: deadline-app/backend
 
     build-docker:
         runs-on: ubuntu-latest
@@ -32,7 +32,7 @@ jobs:
             - uses: actions/checkout@v3
 
             - name: Build backend image
-              run: docker build ./backend
+              run: docker build ./deadline-app/backend
 
             - name: Build frontend image
-              run: docker build ./frontend
+              run: docker build ./deadline-app/frontend
