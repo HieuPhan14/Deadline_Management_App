@@ -21,7 +21,7 @@ A single-server web application for deadline management. One admin uses the app 
 │                         │    PostgreSQL       │   │
 │                         └────────────────────┘   │
 │                                                  │
-│  Runs on port 3000 — no internet required        │
+│  Runs on port 5173 — no internet required        │
 └─────────────────────────────────────────────────┘
          ▲
          │ local network (192.168.x.x)
@@ -36,8 +36,7 @@ A single-server web application for deadline management. One admin uses the app 
 - Single page application running in the browser
 - Communicates with the backend via REST API calls
 - Displays dashboard, staff drill-down, import UI
-- JWT token stored in memory for authenticated requests
-- Live countdown timers update every minute without page refresh
+- JWT token stored in sessionStorage for authenticated requests (survives tab refresh, cleared on browser close)
 
 ### Backend — FastAPI (Python)
 - Handles all business logic and database operations
@@ -49,7 +48,7 @@ A single-server web application for deadline management. One admin uses the app 
 ### Scheduler — APScheduler
 - Runs inside the FastAPI process — no separate service needed
 - Executes `check_deadlines()` every hour automatically
-- Marks overdue tasks, computes urgency tiers, logs every run
+- Marks overdue tasks and writes an audit_log entry for each change
 - Recurring tasks (`is_recurring = true`) excluded from overdue logic
 
 ### Database — PostgreSQL
@@ -59,7 +58,7 @@ A single-server web application for deadline management. One admin uses the app 
 - JSONB columns in audit_log for flexible change history
 
 ### Excel parser — Python service class
-- Reads `.xlsx` file using `openpyxl` and `pandas`
+- Reads `.xlsx` file using `openpyxl`
 - Detects tab names dynamically using `rapidfuzz` fuzzy matching
 - Extracts deadlines from Vietnamese free text using regex + `dateutil`
 - Splits multi-person staff fields (e.g. `"KS. Tiến\nKS. Bảo"`)
@@ -103,21 +102,22 @@ deadline-app/
 │   │   ├── staff.py
 │   │   ├── document.py
 │   │   ├── directive.py
+│   │   ├── import_log.py
 │   │   └── audit_log.py
 │   ├── schemas/                 # Pydantic request/response schemas
 │   │   ├── user.py
-│   │   ├── document.py
-│   │   └── directive.py
+│   │   ├── import_.py
+│   │   └── dashboard.py
 │   ├── routers/                 # FastAPI route handlers
 │   │   ├── auth.py
 │   │   ├── import_.py
-│   │   ├── documents.py
-│   │   ├── directives.py
-│   │   └── staff.py
+│   │   ├── dashboard.py
+│   │   └── deps.py
 │   ├── services/                # Business logic
 │   │   ├── excel_parser.py
-│   │   ├── scheduler.py
-│   │   └── audit.py
+│   │   └── scheduler.py
+│   ├── tests/
+│   │   └── test_excel_parser.py
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
@@ -128,13 +128,16 @@ deadline-app/
 │   │   │   └── Login.jsx
 │   │   ├── components/
 │   │   │   ├── TaskCard.jsx
-│   │   │   ├── StaffCard.jsx
-│   │   │   ├── CountdownTimer.jsx
-│   │   │   └── UrgencyBadge.jsx
-│   │   └── api/                 # API call functions
-│   │       ├── auth.js
-│   │       ├── documents.js
-│   │       └── staff.js
+│   │   │   └── StaffCard.jsx
+│   │   ├── api/
+│   │   │   ├── auth.js
+│   │   │   ├── dashboard.js
+│   │   │   ├── staff.js
+│   │   │   └── client.js
+│   │   ├── context/
+│   │   │   ├── AuthContext.jsx
+│   │   │   └── useAuth.js
+│   │   └── App.jsx
 │   └── package.json
 ├── docs/
 │   ├── architecture.md          ← this file
@@ -146,6 +149,9 @@ deadline-app/
 │   └── decisions.md
 ├── db/
 │   └── schema.sql               # raw SQL to create all tables
+├── .github/
+│   └── workflows/
+│       └── ci.yml               # GitHub Actions CI pipeline
 └── README.md
 ```
 

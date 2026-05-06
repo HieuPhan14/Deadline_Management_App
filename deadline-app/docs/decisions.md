@@ -117,6 +117,6 @@ Why we chose each technology over the alternatives.
 **Reasons:**
 - Simpler for a solo developer — one repo to clone, one README to follow
 - Easier to keep docs, schema, and code in sync
-- No need for separate CI pipelines at this scale
+- Single GitHub Actions CI pipeline covers both backend tests and Docker builds from one workflow file
 
 **Future consideration:** If the frontend and backend teams grow separately, splitting into two repos is straightforward.

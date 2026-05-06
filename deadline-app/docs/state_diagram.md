@@ -53,24 +53,10 @@ stateDiagram-v2
 
 ## How this maps to Python code
 
-```python
-# In models/document.py and models/directive.py
+Status values are plain strings stored directly in the `documents.status` and `directives.status` columns, enforced by a PostgreSQL CHECK constraint:
 
-class TaskStatus:
-    PENDING     = "pending"
-    IN_PROGRESS = "in_progress"
-    OVERDUE     = "overdue"
-    DONE        = "done"
-    CANCELLED   = "cancelled"
-
-# Valid transitions — enforced in the API layer
-VALID_TRANSITIONS = {
-    "pending":     ["in_progress", "done", "cancelled"],
-    "in_progress": ["done", "overdue", "cancelled"],
-    "overdue":     ["done", "in_progress", "cancelled"],
-    "done":        [],        # terminal state
-    "cancelled":   [],        # terminal state
-}
+```sql
+status VARCHAR CHECK (status IN ('pending', 'in_progress', 'overdue', 'done', 'cancelled'))
 ```
 
-The API checks `VALID_TRANSITIONS` before allowing any status change. This prevents invalid state changes — e.g. you cannot move a `done` task back to `pending`.
+The scheduler sets `overdue` automatically. Manual status transitions (`mark_done`, `mark_in_progress`) are stubbed on the model classes — transition enforcement is planned for the API layer.

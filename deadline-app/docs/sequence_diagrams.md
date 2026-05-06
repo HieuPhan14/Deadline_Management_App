@@ -24,14 +24,14 @@ sequenceDiagram
   else valid credentials
     API->>API: generate JWT token (8hr expiry)
     API-->>React: 200 OK + JWT token
-    React->>React: store token in memory
+    React->>React: store token in sessionStorage
     React-->>Admin: redirect to dashboard
   end
 ```
  
 **Key decisions:**
 - Password hashed with bcrypt — never stored in plain text
-- JWT stored in memory (not localStorage) — safer against XSS attacks
+- JWT stored in sessionStorage (not localStorage) — cleared on browser close, safer than localStorage against XSS
 - Token expires after 8 hours — admin must re-login each working day
 ---
  
@@ -69,18 +69,13 @@ sequenceDiagram
   else admin confirms
     Admin->>React: clicks confirm import
     React->>API: POST /import/confirm
+    API->>DB: check duplicate (same filename + tab in import_log)
     API->>DB: upsert staff names
-    loop for each valid row
-      API->>DB: check duplicate (ref number + date)
-      alt not duplicate
-        API->>DB: INSERT document or directive
-        API->>DB: INSERT assignees (junction table)
-      else duplicate
-        API->>DB: skip row
-      end
+    loop for each row
+      API->>DB: INSERT document or directive
+      API->>DB: INSERT assignees (junction table)
     end
     API->>DB: INSERT import_log record
-    API->>DB: INSERT audit_log entries
     API-->>React: 200 OK + import summary
     React-->>Admin: shows result (imported / skipped / flagged)
   end
@@ -88,7 +83,7 @@ sequenceDiagram
  
 **Key decisions:**
 - Two-step flow (preview → confirm) prevents accidental data overwrites
-- Duplicate detection uses reference number + date as a composite key
+- Duplicate detection uses filename + tab name — re-uploading the same file is rejected at the file level
 - Flagged rows (no deadline found) are still shown — admin fixes manually
 - Both tabs are parsed in a single upload request
 - Every import is recorded in `import_log` and `audit_log`
@@ -125,7 +120,6 @@ sequenceDiagram
       end
     end
  
-    API->>DB: INSERT scheduler_log (run timestamp)
     Scheduler-->>API: job complete
   end
  

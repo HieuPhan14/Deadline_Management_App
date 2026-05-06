@@ -106,27 +106,23 @@ classDiagram
   }
 
   class ExcelParser {
-    +String filepath
-    +String tab1_name
-    +String tab2_name
-    +detect_tabs(sheet_names) dict
-    +parse() ParseResult
-    +parse_tab1() list~DocumentRow~
-    +parse_tab2() list~DirectiveRow~
+    +Workbook wb
+    +detect_tabs() dict
+    +parse(tab1_name, tab2_name) dict
+    +parse_tab1(sheet) tuple
+    +parse_tab2(sheet) tuple
     +extract_deadline(text) Date
     +extract_staff_names(text) list~str~
     +detect_recurring(text) tuple
-    +flag_missing_deadlines(rows) list
+    -_suggest_tab(keywords) str
+    -_parse_date(value) Date
   }
 
   class DeadlineScheduler {
     +APScheduler scheduler
-    +start() None
-    +stop() None
+    +start_scheduler() None
+    +stop_scheduler() None
     +check_deadlines() None
-    +compute_urgency(deadline, is_recurring) str
-    +auto_mark_overdue() int
-    +log_run(count) None
   }
 
   User "1" --> "many" Document : imports
@@ -158,7 +154,7 @@ classDiagram
 
 **Dashed arrows (`..>`)** — service dependencies. `ExcelParser` and `DeadlineScheduler` are not database models — they are Python service classes that create or update the model instances.
 
-**`Document` and `Directive` share the same methods** (`is_overdue`, `days_remaining`, `urgency_tier`, `mark_done`, `mark_in_progress`) — in the actual implementation these will inherit from a shared base class `TaskBase` to avoid code duplication.
+**`Document` and `Directive` share the same methods** (`is_overdue`, `days_remaining`, `urgency_tier`, `mark_done`, `mark_in_progress`) — currently stubbed as `...` on each model; urgency computation lives in the dashboard router.
 
 **`ExcelParser`** is the most critical service class. Its `extract_deadline()` method uses Python regex + `dateutil` to parse Vietnamese date strings embedded in free text (e.g. `"KS. Phú hoàn thành trước 15/5/2026"`).
 
