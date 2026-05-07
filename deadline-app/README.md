@@ -166,7 +166,3 @@ Key design decisions:
 - `is_recurring = true` rows are permanently excluded from the overdue scheduler query
 - `users` and `staff` are separate tables — a user is a system login; a staff member is a task assignee extracted from Excel (they may overlap but don't have to)
 
-## Development Notes
-This project was built with AI-assisted development (Claude) 
-for learning and productivity purposes. All architectural 
-decisions, code review, and debugging were done collaboratively.
