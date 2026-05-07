@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Conda
+.conda/
+
+# Environment — never commit secrets
+.env
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+
+# Vite
+frontend/dist/
+frontend/.vite/
+
+# Database
+*.db
+*.sqlite
+
+# Uploads
+uploads/
+*.xlsx
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Claude Code
+.claude/
