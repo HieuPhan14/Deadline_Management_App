@@ -56,18 +56,6 @@ async def confirm_import(
     parser = ExcelParser(io.BytesIO(contents))
     result = parser.parse(tab1_name, tab2_name)
 
-    #check duplicates file name imported
-    recent_import = db.query(ImportLog).filter(
-        ImportLog.filename == file.filename,
-        ImportLog.source_tab == f"{tab1_name} | {tab2_name}"
-    ).first()
-
-    if recent_import:
-        raise HTTPException(
-            status_code=400,
-            detail=f"This file was already imported on {recent_import.imported_at.date()}"
-        )
-
     #1. upsert staff
     staff_map = {}
     for name in result["staff"]:
@@ -87,7 +75,22 @@ async def confirm_import(
 
     #2. insert documents
     docs_imported = 0
+    rows_skipped = 0
+
     for doc in result["documents"]:
+        if doc["reference_number"] and doc["received_date"]:
+            existing = db.query(Document).filter(
+                Document.reference_number == doc["reference_number"],
+                Document.received_date == doc["received_date"]
+            ).first()
+
+            if existing:
+                if existing.status == "cancelled":
+                    existing.status = "pending"
+                    db.flush()
+                rows_skipped += 1
+                continue
+
         new_doc = Document(
             id=uuid4(),
             row_number=doc["row_number"],
@@ -123,6 +126,19 @@ async def confirm_import(
     #3. insert directives
     dirs_imported = 0
     for directive in result["directives"]:
+        if directive["meeting_date"] and directive["directive_content"]:
+            existing = db.query(Directive).filter(
+                Directive.meeting_date == directive["meeting_date"],
+                Directive.directive_content == directive["directive_content"]
+            ).first()
+
+            if existing:
+                if existing.status == "cancelled":
+                    existing.status = "pending"
+                    db.flush()
+                rows_skipped += 1
+                continue
+
         new_dir = Directive(
             id=uuid4(),
             row_number=directive["row_number"],
@@ -158,7 +174,7 @@ async def confirm_import(
         source_tab=f"{tab1_name} | {tab2_name}",
         filename=file.filename,
         rows_imported=docs_imported + dirs_imported,
-        rows_skipped=0,
+        rows_skipped=rows_skipped,
         rows_flagged=len(result["flagged"]),
         imported_by=current_user.id
     )

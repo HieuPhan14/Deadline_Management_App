@@ -36,3 +36,11 @@ export const confirmImport = async (file, tab1Name, tab2Name) => {
     )
     return response.data
 }
+
+export async function cancelDocument(docID) {
+    return client.patch(`/tasks/documents/${docID}/cancel`)
+}
+
+export async function cancelDirective(dirID) {
+    return client.patch(`/tasks/directives/${dirID}/cancel`)
+}

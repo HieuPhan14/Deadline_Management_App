@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import { Trash2 } from 'lucide-react'
 
 function getDeadlineText(task) {
     if (task.is_recurring) return 'Recurring'
@@ -8,7 +9,7 @@ function getDeadlineText(task) {
     return `${task.days_remaining} days left`
 }   
 
-export default function TaskCard({ task }) {
+export default function TaskCard({ task, onCancel }) {
     const borderColor = {
         overdue: 'border-red-600',
         red_urgent: 'border-red-500',
@@ -22,10 +23,17 @@ export default function TaskCard({ task }) {
             'bg-white rounded-xl p-4 border-l-4 shadow-sm space-y-1 mb-2',
             borderColor
         )}>
-            <p className="text-sm font-medium text-gray-800">{task.content}</p>
+            <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-800">{task.content}</p>
+                <button
+                    onClick={() => onCancel(task)}
+                    className="flex items-center justify-between text-xs text-gray-400 hover:text-red-500 transition-colors"
+                >
+                    Delete <Trash2 size={14} />
+                </button>
+            </div>
             <div className="flex items-center justify-between text-xs text-gray-500">
                 <span>{getDeadlineText(task)}</span>
-
                 {task.staff_names.length > 0 && (
                     <span>{task.staff_names.join(', ')}</span>
                 )}

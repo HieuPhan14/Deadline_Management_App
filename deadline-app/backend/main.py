@@ -7,6 +7,7 @@ from models.user import User
 from routers.deps import get_current_user
 from routers.import_ import router as import_router
 from routers.dashboard import router as dashboard_router
+from routers.tasks import router as tasks_router
 from services.scheduler import start_scheduler, stop_scheduler
 
 @asynccontextmanager
@@ -36,6 +37,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(import_router)
 app.include_router(dashboard_router)
+app.include_router(tasks_router)
 
 @app.get("/")
 async def root():

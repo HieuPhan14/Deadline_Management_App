@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
-import { getDashboard, getStaffList } from '../api/dashboard'
+import { getDashboard, getStaffList, cancelDirective, cancelDocument } from '../api/dashboard'
 import TaskCard from '../components/TaskCard'
 import StaffCard from '../components/StaffCard'
 
@@ -10,9 +10,18 @@ export default function Dashboard() {
     const [staff, setStaff] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-
     const { logout } = useAuth()
     const navigate = useNavigate()
+    const handleCancel = async (task) => {
+        if (task.source === 'document') {
+            await cancelDocument(task.id)
+        } else {
+            await cancelDirective(task.id)
+        }
+        const [dashboardData, staffData] = await Promise.all([getDashboard(), getStaffList()])
+        setDashboard(dashboardData)
+        setStaff(staffData)
+    }
 
     useEffect(() => {
         const fetchData = async () => {
@@ -79,7 +88,7 @@ export default function Dashboard() {
                         <section>
                             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Overdue</h2>
                             {dashboard.overdue.map(task => (
-                                <TaskCard key={task.id} task={task} />
+                                <TaskCard key={task.id} task={task} onCancel={handleCancel}/>
                             ))}
                         </section>
                     )}
@@ -87,7 +96,7 @@ export default function Dashboard() {
                         <section>
                             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Due today/tomorrow</h2>
                             {dashboard.red_urgent.map(task => (
-                                <TaskCard key={task.id} task={task} />
+                                <TaskCard key={task.id} task={task} onCancel={handleCancel}/>
                             ))}
                         </section>
                     )}
@@ -95,7 +104,7 @@ export default function Dashboard() {
                         <section>
                             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Due in 3 days</h2>
                             {dashboard.red.map(task => (
-                                <TaskCard key={task.id} task={task} />
+                                <TaskCard key={task.id} task={task} onCancel={handleCancel}/>
                             ))}
                         </section>
                     )}
@@ -103,7 +112,7 @@ export default function Dashboard() {
                         <section>
                             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Due this week</h2>
                             {dashboard.yellow.map(task => (
-                                <TaskCard key={task.id} task={task} />
+                                <TaskCard key={task.id} task={task} onCancel={handleCancel}/>
                             ))}
                         </section>
                     )}
@@ -111,7 +120,7 @@ export default function Dashboard() {
                         <section>
                             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">On track</h2>
                             {dashboard.green.map(task => (
-                                <TaskCard key={task.id} task={task} />
+                                <TaskCard key={task.id} task={task} onCancel={handleCancel}/>
                             ))}
                         </section>
                     )}
