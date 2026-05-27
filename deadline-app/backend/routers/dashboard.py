@@ -10,6 +10,7 @@ from routers.deps import get_current_user
 from datetime import date
 from uuid import UUID
 from typing import Optional
+from services.scheduler import check_deadlines
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -88,6 +89,8 @@ async def get_dashboard(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    check_deadlines()
+    
     #get all active tasks - not done or cancelled
     active_statuses = ["pending", "in_progress", "overdue"]
 
