@@ -237,42 +237,59 @@ async def get_staff_tasks(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    doc_ids = await get_doc_ids_for_staff(staff_id, db)
-    dir_ids = await get_dir_ids_for_staff(staff_id, db)
+    active = ["pending", "in_progress", "overdue"]
+
+    doc_result = await db.execute(
+        select(Document)
+        .join(document_assignees, Document.id == document_assignees.c.document_id)
+        .where(
+            document_assignees.c.staff_id == staff_id,
+            Document.status.in_(active),
+            Document.content_summary.isnot(None),
+            Document.content_summary != ""
+        )
+    )
+    documents = doc_result.scalars().all()
+
+    dir_result = await db.execute(
+        select(Directive)
+        .join(directive_assignees, Directive.id == directive_assignees.c.directive_id)
+        .where(
+            directive_assignees.c.staff_id == staff_id,
+            Directive.status.in_(active),
+            Directive.directive_content.isnot(None),
+            Directive.directive_content != ""
+        )
+    )
+    directives = dir_result.scalars().all()
 
     tasks = []
 
-    for doc_id in doc_ids:
-        result = await db.execute(select(Document).where(Document.id == doc_id))
-        doc = result.scalars().first()
-        if doc:
-            tasks.append(TaskSummary(
-                id=doc.id,
-                content=doc.content_summary or "",
-                deadline=doc.deadline,
-                days_remaining=get_days_remaining(doc.deadline, doc.is_recurring),
-                urgency=get_urgency(doc.deadline, doc.is_recurring),
-                status=doc.status,
-                is_recurring=doc.is_recurring,
-                source="document",
-                staff_names=await get_staff_names_for_doc(doc.id, db)
-            ))
+    for doc in documents:
+        tasks.append(TaskSummary(
+            id=doc.id,
+            content=doc.content_summary or "",
+            deadline=doc.deadline,
+            days_remaining=get_days_remaining(doc.deadline, doc.is_recurring),
+            urgency=get_urgency(doc.deadline, doc.is_recurring),
+            status=doc.status,
+            is_recurring=doc.is_recurring,
+            source="document",
+            staff_names=await get_staff_names_for_doc(doc.id, db)
+        ))
 
-    for dir_id in dir_ids:
-        result = await db.execute(select(Directive).where(Directive.id == dir_id))
-        directive = result.scalars().first()
-        if directive:
-            tasks.append(TaskSummary(
-                id=directive.id,
-                content=directive.directive_content or "",
-                deadline=directive.deadline,
-                days_remaining=get_days_remaining(directive.deadline, directive.is_recurring),
-                urgency=get_urgency(directive.deadline, directive.is_recurring),
-                status=directive.status,
-                is_recurring=directive.is_recurring,
-                source="directive",
-                staff_names=await get_staff_names_for_directive(directive.id, db)
-            ))
+    for directive in directives:
+        tasks.append(TaskSummary(
+            id=directive.id,
+            content=directive.directive_content or "",
+            deadline=directive.deadline,
+            days_remaining=get_days_remaining(directive.deadline, directive.is_recurring),
+            urgency=get_urgency(directive.deadline, directive.is_recurring),
+            status=directive.status,
+            is_recurring=directive.is_recurring,
+            source="directive",
+            staff_names=await get_staff_names_for_directive(directive.id, db)
+        ))
 
     return sorted(tasks, key=lambda t: (
         t.days_remaining is None,

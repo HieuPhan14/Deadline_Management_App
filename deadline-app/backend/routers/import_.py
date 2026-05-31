@@ -34,12 +34,14 @@ async def detect_tabs(
 async def preview_import(
     tab1_name: str,
     tab2_name: str,
+    tab1_header_row: int,
+    tab2_header_row: int,
     current_user: CurrentUser,
     file: Annotated[UploadFile, File(...)],
 ):
     contents = await file.read()
     parser = ExcelParser(io.BytesIO(contents))
-    result = parser.parse(tab1_name, tab2_name)
+    result = parser.parse(tab1_name, tab2_name, tab1_header_row, tab2_header_row)
     return {
         "summary": result["summary"],
         "flagged": result["flagged"],
@@ -51,13 +53,15 @@ async def preview_import(
 async def confirm_import(
     tab1_name: str,
     tab2_name: str,
+    tab1_header_row: int,
+    tab2_header_row: int,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
     file: Annotated[UploadFile, File(...)],
 ):
     contents = await file.read()
     parser = ExcelParser(io.BytesIO(contents))
-    result = parser.parse(tab1_name, tab2_name)
+    result = parser.parse(tab1_name, tab2_name, tab1_header_row, tab2_header_row)
 
     # 1. upsert staff
     staff_map = {}

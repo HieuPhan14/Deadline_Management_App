@@ -4,6 +4,19 @@ from datetime import date
 from uuid import UUID
 
 
+class TaskCreate(BaseModel):
+    content: str
+    deadline: Optional[date] = None
+    staff_names: list[str] = []
+    source: str = "document"
+
+
+class TaskUpdate(BaseModel):
+    content: Optional[str] = None
+    deadline: Optional[date] = None
+    staff_names: Optional[list[str]] = None
+
+
 class StaffSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

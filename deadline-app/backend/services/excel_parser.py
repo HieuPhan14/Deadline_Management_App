@@ -16,8 +16,8 @@ class ExcelParser:
         return {
             "sheet_names": self.wb.sheetnames,
             "suggested": {
-                "tab1": self._suggest_tab("theo doi cv"),
-                "tab2": self._suggest_tab("chi dao ldp")
+                "tab1": self._suggest_tab("documents tracking theo doi cv"),
+                "tab2": self._suggest_tab("directives meeting chi dao ldp")
             }
         }
 
@@ -30,7 +30,7 @@ class ExcelParser:
         if not text:
             return []
         names = re.split(r'[\n,;]+', str(text))
-        return [name.strip() for name in names if name.strip()]
+        return [name.strip() for name in names if name.strip() and len(name.strip()) <= 100]
 
     def detect_recurring(self, text: str) -> tuple:
         if not text:
@@ -38,7 +38,9 @@ class ExcelParser:
 
         recurring_keywords = {
             "mỗi ngày", "hàng ngày", "hàng tuần",
-            "hàng tháng", "thường xuyên"
+            "hàng tháng", "thường xuyên", "daily", "weekly", "monthly", "yearly", "annually",
+            "recurring", "recurrent", "ongoing", "regular", "regularly",
+            "every day", "every week", "every month", "continuous"
         } 
         text_lower = str(text).lower()
 
@@ -60,15 +62,19 @@ class ExcelParser:
 
         text = str(text)
 
-        pattern = r'\d{1,2}/\d{1,2}/\d{4}'
-        matches = re.findall(pattern, text)
+        # match dd/mm/yyyy, mm/dd/yyyy, yyyy-mm-dd
+        patterns = [
+            r'\d{4}-\d{2}-\d{2}',
+            r'\d{1,2}/\d{1,2}/\d{4}',
+        ]
+        for pattern in patterns:
+            matches = re.findall(pattern, text)
+            if matches:
+                try:
+                    return parse_date(matches[-1]).date()
+                except ParserError:
+                    continue
 
-        if matches:
-            try:
-                return parse_date(matches[-1], dayfirst=True).date()
-            except ParserError:
-                return None
-            
         return None
     
     def _parse_date(self, value) -> date:
@@ -86,24 +92,25 @@ class ExcelParser:
         except (ParserError, ValueError):
             return None
 
-    def parse_tab1(self, sheet) -> tuple:
+    def parse_tab1(self, sheet, header_row: int = None) -> tuple:
+        header_row = header_row or self.TAB1_HEADER_ROW
         documents = []
         flagged = []
 
         #skip header rows, start at row 4
-        for row in sheet.iter_rows(min_row=self.TAB1_HEADER_ROW, values_only=True):
+        for row in sheet.iter_rows(min_row=header_row, values_only=True):
             if not any(row):
                 continue
 
             row_number    = int(row[0]) if row[0] else None
             received_date = self._parse_date(row[1])
-            doc_type      = row[2]
-            content       = row[3]
-            reference     = row[4]
-            requirement   = row[5]  # some deadline in here
-            staff_text    = row[6]
-            result        = row[7]
-            notes         = row[8]
+            doc_type      = str(row[2]).strip() if row[2] is not None else None
+            content       = str(row[3]).strip() if row[3] is not None else None
+            reference     = str(row[4]).strip() if row[4] is not None else None
+            requirement   = str(row[5]).strip() if row[5] is not None else None
+            staff_text    = str(row[6]).strip() if row[6] is not None else None
+            result        = str(row[7]).strip() if row[7] is not None else None
+            notes         = str(row[8]).strip() if row[8] is not None else None
 
             deadline = self.extract_deadline(str(requirement) if requirement else "")
             is_recurring, recurrence_label = self.detect_recurring(
@@ -137,21 +144,22 @@ class ExcelParser:
 
         return (documents, flagged)
     
-    def parse_tab2(self, sheet) -> tuple:
+    def parse_tab2(self, sheet, header_row: int = None) -> tuple:
+        header_row = header_row or self.TAB2_HEADER_ROW
         directives = []
         flagged = []
 
-        for row in sheet.iter_rows(min_row=self.TAB2_HEADER_ROW, values_only=True):
+        for row in sheet.iter_rows(min_row=header_row, values_only=True):
             if not any(row):
                 continue
 
             row_number    = int(row[0]) if row[0] else None
             meeting_date  = self._parse_date(row[1])
-            content       = row[2]
-            staff_text    = row[3]
-            deadline_text = row[4]
-            result        = row[5]
-            notes         = row[6]
+            content       = str(row[2]).strip() if row[2] is not None else None
+            staff_text    = str(row[3]).strip() if row[3] is not None else None
+            deadline_text = str(row[4]).strip() if row[4] is not None else None
+            result        = str(row[5]).strip() if row[5] is not None else None
+            notes         = str(row[6]).strip() if row[6] is not None else None
 
             # detect recurring first
             is_recurring, recurrence_label = self.detect_recurring(
@@ -186,12 +194,12 @@ class ExcelParser:
                 
         return (directives, flagged)
 
-    def parse(self, tab1_name: str, tab2_name:str) -> dict:
+    def parse(self, tab1_name: str, tab2_name: str, tab1_header_row: int = None, tab2_header_row: int = None) -> dict:
         sheet1 = self.wb[tab1_name]
         sheet2 = self.wb[tab2_name]
 
-        documents, flagged_docs = self.parse_tab1(sheet1)
-        directives, flagged_dirs = self.parse_tab2(sheet2)
+        documents, flagged_docs = self.parse_tab1(sheet1, tab1_header_row)
+        directives, flagged_dirs = self.parse_tab2(sheet2, tab2_header_row)
 
         #collect all unique staff names from both tabs
         all_staff = set()

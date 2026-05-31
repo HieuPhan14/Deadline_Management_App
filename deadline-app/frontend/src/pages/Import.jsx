@@ -7,6 +7,8 @@ export default function Import() {
     const [sheetNames, setSheetNames] = useState([])
     const [tab1, setTab1] = useState('')
     const [tab2, setTab2] = useState('')
+    const [tab1HeaderRow, setTab1HeaderRow] = useState(6)
+    const [tab2HeaderRow, setTab2HeaderRow] = useState(9)
     const [preview, setPreview] = useState(null)
     const [result, setResult] = useState(null)
     const [loading, setLoading] = useState(false)
@@ -31,7 +33,7 @@ export default function Import() {
     const handlePreview = async () => {
         setLoading(true)
         try {
-            const data = await previewImport(file, tab1, tab2)
+            const data = await previewImport(file, tab1, tab2, tab1HeaderRow, tab2HeaderRow)
             setPreview(data)
             setStep(2)
         } finally {
@@ -42,7 +44,7 @@ export default function Import() {
     const handleConfirm = async () => {
         setLoading(true)
         try {
-            const data = await confirmImport(file, tab1, tab2)
+            const data = await confirmImport(file, tab1, tab2, tab1HeaderRow, tab2HeaderRow)
             setResult(data)
             setStep(3)
         } catch (err) {
@@ -99,6 +101,29 @@ export default function Import() {
                                             <option key={name} value={name}>{name}</option>
                                         ))}
                                     </select>
+                                </div>
+
+                                <div className="mt-4 flex gap-4">
+                                    <div className="flex-1">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Tab1 data starts at row</label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={tab1HeaderRow}
+                                            onChange={(e) => setTab1HeaderRow(Number(e.target.value))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Tab2 data starts at row</label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={tab2HeaderRow}
+                                            onChange={(e) => setTab2HeaderRow(Number(e.target.value))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
                                 </div>
 
                                 <button
