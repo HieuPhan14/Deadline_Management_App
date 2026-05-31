@@ -17,23 +17,29 @@ export const detectTabs = async (file) => {
     return response.data
 }
 
-export const previewImport = async (file, tab1Name, tab2Name, tab1HeaderRow, tab2HeaderRow) => {
+export const getTabPreview = async (file, tabName, headerRow) => {
     const formData = new FormData()
     formData.append('file', file)
     const response = await client.post(
-        `/import/preview?tab1_name=${encodeURIComponent(tab1Name)}&tab2_name=${encodeURIComponent(tab2Name)}&tab1_header_row=${tab1HeaderRow}&tab2_header_row=${tab2HeaderRow}`,
+        `/import/tab-preview?tab_name=${encodeURIComponent(tabName)}&header_row=${headerRow}`,
         formData
     )
     return response.data
 }
 
-export const confirmImport = async (file, tab1Name, tab2Name, tab1HeaderRow, tab2HeaderRow) => {
+export const previewImport = async (file, tabConfigs) => {
     const formData = new FormData()
     formData.append('file', file)
-    const response = await client.post(
-        `/import/confirm?tab1_name=${encodeURIComponent(tab1Name)}&tab2_name=${encodeURIComponent(tab2Name)}&tab1_header_row=${tab1HeaderRow}&tab2_header_row=${tab2HeaderRow}`,
-        formData
-    )
+    formData.append('config', JSON.stringify(tabConfigs))
+    const response = await client.post('/import/preview', formData)
+    return response.data
+}
+
+export const confirmImport = async (file, tabConfigs) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('config', JSON.stringify(tabConfigs))
+    const response = await client.post('/import/confirm', formData)
     return response.data
 }
 

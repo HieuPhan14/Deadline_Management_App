@@ -5,9 +5,10 @@ from dateutil.parser import parse as parse_date
 from dateutil.parser import ParserError
 from datetime import date, datetime
 
+
 class ExcelParser:
-    TAB1_HEADER_ROW = 6 # data starts at row 6 in Tab 1
-    TAB2_HEADER_ROW = 9 # data starts at row 9 in Tab 2
+    TAB1_HEADER_ROW = 6
+    TAB2_HEADER_ROW = 9
 
     def __init__(self, file):
         self.wb = openpyxl.load_workbook(file)
@@ -25,7 +26,7 @@ class ExcelParser:
         def score(name):
             return fuzz.partial_ratio(keywords, name.lower())
         return max(self.wb.sheetnames, key=score)
-    
+
     def extract_staff_names(self, text: str) -> list:
         if not text:
             return []
@@ -38,10 +39,11 @@ class ExcelParser:
 
         recurring_keywords = {
             "mỗi ngày", "hàng ngày", "hàng tuần",
-            "hàng tháng", "thường xuyên", "daily", "weekly", "monthly", "yearly", "annually",
+            "hàng tháng", "thường xuyên",
+            "daily", "weekly", "monthly", "yearly", "annually",
             "recurring", "recurrent", "ongoing", "regular", "regularly",
             "every day", "every week", "every month", "continuous"
-        } 
+        }
         text_lower = str(text).lower()
 
         for keyword in recurring_keywords:
@@ -49,12 +51,11 @@ class ExcelParser:
                 return (True, str(text).strip())
 
         return (False, None)
-    
-    def extract_deadline(self, text: str):
+
+    def extract_deadline(self, text) -> date:
         if not text:
             return None
-        
-        # if already a date or datetime obj - return directly
+
         if isinstance(text, datetime):
             return text.date()
         if isinstance(text, date):
@@ -77,150 +78,120 @@ class ExcelParser:
                 pass
 
         return None
-    
+
     def _parse_date(self, value) -> date:
         if value is None:
             return None
-        
-        # already a date
         if hasattr(value, 'date'):
             return value.date()
         if isinstance(value, date):
             return value
-        #string date - parse it
         try:
             return parse_date(str(value), dayfirst=True).date()
         except (ParserError, ValueError):
             return None
 
-    def parse_tab1(self, sheet, header_row: int = None) -> tuple:
-        header_row = header_row or self.TAB1_HEADER_ROW
+    def _cell_str(self, value):
+        if value is None:
+            return None
+        return str(value).strip() or None
+
+    def get_tab_preview(self, tab_name: str, header_row: int) -> dict:
+        sheet = self.wb[tab_name]
+        rows = []
+        for row in sheet.iter_rows(min_row=max(1, header_row - 1), max_row=header_row + 2, values_only=True):
+            rows.append(row)
+
+        if not rows:
+            return {"columns": []}
+
+        num_cols = max(len(r) for r in rows)
+        label_row = rows[0] if rows else []
+        data_rows = rows[1:]
+
+        columns = []
+        for col_idx in range(num_cols):
+            header_val = label_row[col_idx] if col_idx < len(label_row) else None
+            samples = []
+            for row in data_rows:
+                if col_idx < len(row) and row[col_idx] is not None:
+                    samples.append(str(row[col_idx]).strip()[:60])
+            columns.append({
+                "index": col_idx,
+                "header": str(header_val).strip() if header_val else f"Column {col_idx + 1}",
+                "samples": samples[:3]
+            })
+
+        return {"columns": columns}
+
+    def parse_tab_generic(self, sheet, header_row: int, mapping: dict) -> tuple:
+        tasks = []
+        flagged = []
+
+        content_col  = mapping.get("content_col")
+        deadline_col = mapping.get("deadline_col")
+        staff_col    = mapping.get("staff_col")
+
+        for row in sheet.iter_rows(min_row=header_row, values_only=True):
+            if not any(row):
+                continue
+
+            content = self._cell_str(row[content_col]) if content_col is not None and content_col < len(row) else None
+            if not content:
+                continue
+
+            deadline_raw = row[deadline_col] if deadline_col is not None and deadline_col < len(row) else None
+            staff_text   = self._cell_str(row[staff_col]) if staff_col is not None and staff_col < len(row) else None
+
+            is_recurring, recurrence_label = self.detect_recurring(str(deadline_raw) if deadline_raw else "")
+            deadline = None if is_recurring else self.extract_deadline(deadline_raw)
+            staff_names = self.extract_staff_names(staff_text)
+
+            task = {
+                "content": content,
+                "deadline": deadline,
+                "is_recurring": is_recurring,
+                "recurrence_label": recurrence_label,
+                "status": "pending",
+                "staff_names": staff_names,
+            }
+
+            tasks.append(task)
+            if not deadline and not is_recurring:
+                flagged.append({**task, "flag_reason": "deadline not found"})
+
+        return tasks, flagged
+
+    def parse(self, tab_configs: list) -> dict:
         documents = []
-        flagged = []
-
-        #skip header rows, start at row 4
-        for row in sheet.iter_rows(min_row=header_row, values_only=True):
-            if not any(row):
-                continue
-
-            row_number    = int(row[0]) if row[0] else None
-            received_date = self._parse_date(row[1])
-            doc_type      = str(row[2]).strip() if row[2] is not None else None
-            content       = str(row[3]).strip() if row[3] is not None else None
-            reference     = str(row[4]).strip() if row[4] is not None else None
-            requirement   = str(row[5]).strip() if row[5] is not None else None
-            staff_text    = str(row[6]).strip() if row[6] is not None else None
-            result        = str(row[7]).strip() if row[7] is not None else None
-            notes         = str(row[8]).strip() if row[8] is not None else None
-
-            deadline = self.extract_deadline(str(requirement) if requirement else "")
-            is_recurring, recurrence_label = self.detect_recurring(
-                str(requirement) if requirement else ""
-            )
-            staff_names = self.extract_staff_names(staff_text)
-            status = "pending"
-
-            doc = {
-                "row_number": row_number,
-                "received_date": received_date,
-                "document_type": doc_type,
-                "content_summary": content,
-                "reference_number": reference,
-                "requirement": requirement,
-                "deadline": deadline,
-                "is_recurring": is_recurring,
-                "recurrence_label": recurrence_label,
-                "status": status,
-                "result": result,
-                "notes": notes,
-                "staff_names": staff_names
-            }
-
-            #always import the document regardless 
-            documents.append(doc)
-
-            #separately track which ones need admin attention
-            if not deadline and not is_recurring:
-                flagged.append({**doc, "flag_reason": "deadline not found"})
-
-        return (documents, flagged)
-    
-    def parse_tab2(self, sheet, header_row: int = None) -> tuple:
-        header_row = header_row or self.TAB2_HEADER_ROW
         directives = []
-        flagged = []
-
-        for row in sheet.iter_rows(min_row=header_row, values_only=True):
-            if not any(row):
-                continue
-
-            row_number    = int(row[0]) if row[0] else None
-            meeting_date  = self._parse_date(row[1])
-            content       = str(row[2]).strip() if row[2] is not None else None
-            staff_text    = str(row[3]).strip() if row[3] is not None else None
-            deadline_text = str(row[4]).strip() if row[4] is not None else None
-            result        = str(row[5]).strip() if row[5] is not None else None
-            notes         = str(row[6]).strip() if row[6] is not None else None
-
-            # detect recurring first
-            is_recurring, recurrence_label = self.detect_recurring(
-                str(deadline_text) if deadline_text else ""
-            )
-
-            # only extract deadline if not recurring
-            if is_recurring:
-                deadline = None
-            else:
-                deadline = self.extract_deadline(deadline_text)
-
-            staff_names = self.extract_staff_names(staff_text)
-            status = "pending"
-
-            directive = {
-                "row_number": row_number,
-                "meeting_date": meeting_date,
-                "directive_content": content,
-                "deadline": deadline,
-                "is_recurring": is_recurring,
-                "recurrence_label": recurrence_label,
-                "status": status,
-                "result": result,
-                "notes": notes,
-                "staff_names": staff_names
-            }
-
-            directives.append(directive)
-            if not deadline and not is_recurring:
-                flagged.append({**directive, "flag_reason": "deadline not found"})
-                
-        return (directives, flagged)
-
-    def parse(self, tab1_name: str, tab2_name: str, tab1_header_row: int = None, tab2_header_row: int = None) -> dict:
-        sheet1 = self.wb[tab1_name]
-        sheet2 = self.wb[tab2_name]
-
-        documents, flagged_docs = self.parse_tab1(sheet1, tab1_header_row)
-        directives, flagged_dirs = self.parse_tab2(sheet2, tab2_header_row)
-
-        #collect all unique staff names from both tabs
+        all_flagged = []
         all_staff = set()
-        for doc in documents + flagged_docs:
-            for name in doc.get("staff_names", []):
-                all_staff.add(name)
 
-        for directive in directives + flagged_dirs:
-            for name in directive.get("staff_names", []):
-                all_staff.add(name)
+        for cfg in tab_configs:
+            sheet = self.wb[cfg["tab_name"]]
+            tasks, flagged = self.parse_tab_generic(sheet, cfg["header_row"], cfg["mapping"])
+
+            for task in tasks + flagged:
+                for name in task.get("staff_names", []):
+                    all_staff.add(name)
+
+            if cfg.get("task_type") == "directive":
+                directives.extend(tasks)
+            else:
+                documents.extend(tasks)
+
+            all_flagged.extend(flagged)
 
         return {
             "documents": documents,
             "directives": directives,
-            "flagged": flagged_docs + flagged_dirs,
+            "flagged": all_flagged,
             "staff": list(all_staff),
             "summary": {
                 "documents_parsed": len(documents),
                 "directives_parsed": len(directives),
-                "total_flagged": len(flagged_docs + flagged_dirs),
+                "total_flagged": len(all_flagged),
                 "staff_found": len(all_staff)
             }
         }
