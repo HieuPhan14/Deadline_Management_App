@@ -18,14 +18,5 @@ class Staff(Base):
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
-    def get_task_count(self) -> int:
-        ...
-
-    def get_pending_tasks(self) -> list:
-        ...
-
-    def get_overdue_tasks(self) -> list:
-        ...
-
     def __repr__(self) -> str:
         return f"<Staff {self.short_name}>"

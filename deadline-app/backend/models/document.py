@@ -39,17 +39,3 @@ class Document(Base):
         PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
-    def is_overdue(self) -> bool:
-        ...
-
-    def days_remaining(self) -> int:
-        ...
-
-    def urgency_tier(self) -> str:
-        ...
-
-    def mark_done(self) -> None:
-        ...
-
-    def mark_in_progress(self) -> None:
-        ...

@@ -52,7 +52,7 @@ class ExcelParser:
 
         return (False, None)
 
-    def extract_deadline(self, text) -> date:
+    def extract_deadline(self, text) -> date | None:
         if not text:
             return None
 

@@ -87,7 +87,18 @@ async def confirm_import(
 
     # 2. insert documents
     docs_imported = 0
+    rows_skipped = 0
     for doc in result["documents"]:
+        existing = await db.execute(
+            select(Document).where(
+                Document.content_summary == doc["content"],
+                Document.status != "cancelled"
+            )
+        )
+        if existing.scalars().first():
+            rows_skipped += 1
+            continue
+
         new_doc = Document(
             id=uuid4(),
             content_summary=doc["content"],
@@ -110,6 +121,16 @@ async def confirm_import(
     # 3. insert directives
     dirs_imported = 0
     for directive in result["directives"]:
+        existing = await db.execute(
+            select(Directive).where(
+                Directive.directive_content == directive["content"],
+                Directive.status != "cancelled"
+            )
+        )
+        if existing.scalars().first():
+            rows_skipped += 1
+            continue
+
         new_dir = Directive(
             id=uuid4(),
             directive_content=directive["content"],
@@ -135,7 +156,7 @@ async def confirm_import(
         source_tab=" | ".join(c["tab_name"] for c in tab_configs),
         filename=file.filename,
         rows_imported=docs_imported + dirs_imported,
-        rows_skipped=0,
+        rows_skipped=rows_skipped,
         rows_flagged=len(result["flagged"]),
         imported_by=current_user.id,
     ))

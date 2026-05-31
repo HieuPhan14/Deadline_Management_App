@@ -36,8 +36,11 @@ export default function Import() {
         task_type:  t.taskType,
         mapping: {
             content_col:  t.mapping.contentCol,
-            deadline_col: t.mapping.deadlineCol ?? null,
-            staff_col:    t.mapping.staffCol    ?? null,
+            // document type: deadline lives in the same column as content
+            deadline_col: t.taskType === 'document'
+                ? t.mapping.contentCol
+                : (t.mapping.deadlineCol ?? null),
+            staff_col:    t.mapping.staffCol ?? null,
         }
     }))
 
@@ -187,8 +190,8 @@ export default function Import() {
                                             onChange={e => updateTab(idx, { taskType: e.target.value })}
                                             className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         >
-                                            <option value="document">Document</option>
-                                            <option value="directive">Directive</option>
+                                            <option value="document">Content &amp; Deadline in same column</option>
+                                            <option value="directive">Separate content &amp; deadline columns</option>
                                         </select>
                                     </div>
                                 </div>
@@ -232,23 +235,37 @@ export default function Import() {
 
                                         {/* Field mapping */}
                                         <div className="grid grid-cols-3 gap-3">
-                                            <div>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">Content column <span className="text-red-400">*</span></label>
-                                                <ColSelect
-                                                    columns={tab.columns}
-                                                    value={tab.mapping.contentCol}
-                                                    onChange={v => updateMapping(idx, { contentCol: v })}
-                                                    required
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">Deadline column</label>
-                                                <ColSelect
-                                                    columns={tab.columns}
-                                                    value={tab.mapping.deadlineCol}
-                                                    onChange={v => updateMapping(idx, { deadlineCol: v })}
-                                                />
-                                            </div>
+                                            {tab.taskType === 'document' ? (
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Content + Deadline column <span className="text-red-400">*</span></label>
+                                                    <ColSelect
+                                                        columns={tab.columns}
+                                                        value={tab.mapping.contentCol}
+                                                        onChange={v => updateMapping(idx, { contentCol: v })}
+                                                        required
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Content column <span className="text-red-400">*</span></label>
+                                                        <ColSelect
+                                                            columns={tab.columns}
+                                                            value={tab.mapping.contentCol}
+                                                            onChange={v => updateMapping(idx, { contentCol: v })}
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Deadline column</label>
+                                                        <ColSelect
+                                                            columns={tab.columns}
+                                                            value={tab.mapping.deadlineCol}
+                                                            onChange={v => updateMapping(idx, { deadlineCol: v })}
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-600 mb-1">Staff column</label>
                                                 <ColSelect
