@@ -62,18 +62,19 @@ class ExcelParser:
 
         text = str(text)
 
-        # match dd/mm/yyyy, mm/dd/yyyy, yyyy-mm-dd
-        patterns = [
-            r'\d{4}-\d{2}-\d{2}',
-            r'\d{1,2}/\d{1,2}/\d{4}',
-        ]
-        for pattern in patterns:
-            matches = re.findall(pattern, text)
-            if matches:
-                try:
-                    return parse_date(matches[-1]).date()
-                except ParserError:
-                    continue
+        iso_matches = re.findall(r'\d{4}-\d{2}-\d{2}', text)
+        if iso_matches:
+            try:
+                return parse_date(iso_matches[-1]).date()
+            except ParserError:
+                pass
+
+        slash_matches = re.findall(r'\d{1,2}/\d{1,2}/\d{4}', text)
+        if slash_matches:
+            try:
+                return parse_date(slash_matches[-1], dayfirst=True).date()
+            except ParserError:
+                pass
 
         return None
     
