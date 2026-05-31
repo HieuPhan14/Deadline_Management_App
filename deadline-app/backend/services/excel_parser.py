@@ -7,9 +7,6 @@ from datetime import date, datetime
 
 
 class ExcelParser:
-    TAB1_HEADER_ROW = 6
-    TAB2_HEADER_ROW = 9
-
     def __init__(self, file):
         self.wb = openpyxl.load_workbook(file)
 
