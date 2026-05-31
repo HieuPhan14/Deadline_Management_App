@@ -1,24 +1,25 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from typing import Annotated
+from fastapi import APIRouter, Depends, UploadFile, File
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from schemas.import_ import DetectTabsResponse, ImportSummary
-from routers.deps import get_current_user
-from sqlalchemy.orm import Session
 from database import get_db
-from models.user import User
 from models.staff import Staff
 from models.document import Document, document_assignees
 from models.directive import Directive, directive_assignees
 from models.import_log import ImportLog
 from services.excel_parser import ExcelParser
+from auth import CurrentUser
 import io
 from uuid import uuid4
 
-
 router = APIRouter(prefix="/import", tags=["import"])
+
 
 @router.post("/detect-tabs", response_model=DetectTabsResponse)
 async def detect_tabs(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
+    current_user: CurrentUser,
+    file: Annotated[UploadFile, File(...)],
 ):
     contents = await file.read()
     parser = ExcelParser(io.BytesIO(contents))
@@ -28,12 +29,13 @@ async def detect_tabs(
         suggested=result["suggested"]
     )
 
+
 @router.post("/preview")
 async def preview_import(
     tab1_name: str,
     tab2_name: str,
-    file: UploadFile=File(...),
-    current_user: User = Depends(get_current_user)
+    current_user: CurrentUser,
+    file: Annotated[UploadFile, File(...)],
 ):
     contents = await file.read()
     parser = ExcelParser(io.BytesIO(contents))
@@ -44,24 +46,26 @@ async def preview_import(
         "staff": result["staff"]
     }
 
+
 @router.post("/confirm", response_model=ImportSummary)
 async def confirm_import(
     tab1_name: str,
     tab2_name: str,
-    file: UploadFile=File(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    file: Annotated[UploadFile, File(...)],
 ):
     contents = await file.read()
     parser = ExcelParser(io.BytesIO(contents))
     result = parser.parse(tab1_name, tab2_name)
 
-    #1. upsert staff
+    # 1. upsert staff
     staff_map = {}
     for name in result["staff"]:
-        existing = db.query(Staff).filter(Staff.short_name == name).first()
+        existing_result = await db.execute(select(Staff).where(Staff.short_name == name))
+        existing = existing_result.scalars().first()
         if existing:
-            staff_map[name] = existing.id 
+            staff_map[name] = existing.id
         else:
             new_staff = Staff(
                 id=uuid4(),
@@ -70,24 +74,27 @@ async def confirm_import(
                 is_active=True
             )
             db.add(new_staff)
-            db.flush()
+            await db.flush()
             staff_map[name] = new_staff.id
 
-    #2. insert documents
+    # 2. insert documents
     docs_imported = 0
     rows_skipped = 0
 
     for doc in result["documents"]:
         if doc["reference_number"] and doc["received_date"]:
-            existing = db.query(Document).filter(
-                Document.reference_number == doc["reference_number"],
-                Document.received_date == doc["received_date"]
-            ).first()
+            existing_result = await db.execute(
+                select(Document).where(
+                    Document.reference_number == doc["reference_number"],
+                    Document.received_date == doc["received_date"]
+                )
+            )
+            existing = existing_result.scalars().first()
 
             if existing:
                 if existing.status == "cancelled":
                     existing.status = "pending"
-                    db.flush()
+                    await db.flush()
                 rows_skipped += 1
                 continue
 
@@ -109,12 +116,11 @@ async def confirm_import(
         )
 
         db.add(new_doc)
-        db.flush()
+        await db.flush()
 
-        # insert assignees
         for name in doc["staff_names"]:
             if name in staff_map:
-                db.execute(
+                await db.execute(
                     document_assignees.insert().values(
                         id=uuid4(),
                         document_id=new_doc.id,
@@ -123,19 +129,22 @@ async def confirm_import(
                 )
         docs_imported += 1
 
-    #3. insert directives
+    # 3. insert directives
     dirs_imported = 0
     for directive in result["directives"]:
         if directive["meeting_date"] and directive["directive_content"]:
-            existing = db.query(Directive).filter(
-                Directive.meeting_date == directive["meeting_date"],
-                Directive.directive_content == directive["directive_content"]
-            ).first()
+            existing_result = await db.execute(
+                select(Directive).where(
+                    Directive.meeting_date == directive["meeting_date"],
+                    Directive.directive_content == directive["directive_content"]
+                )
+            )
+            existing = existing_result.scalars().first()
 
             if existing:
                 if existing.status == "cancelled":
                     existing.status = "pending"
-                    db.flush()
+                    await db.flush()
                 rows_skipped += 1
                 continue
 
@@ -154,12 +163,11 @@ async def confirm_import(
         )
 
         db.add(new_dir)
-        db.flush()
+        await db.flush()
 
-        # insert assignees
         for name in directive["staff_names"]:
             if name in staff_map:
-                db.execute(
+                await db.execute(
                     directive_assignees.insert().values(
                         id=uuid4(),
                         directive_id=new_dir.id,
@@ -180,8 +188,7 @@ async def confirm_import(
     )
     db.add(import_log)
 
-    # 5. commit everything
-    db.commit()
+    await db.commit()
 
     return ImportSummary(
         documents_parsed=docs_imported,

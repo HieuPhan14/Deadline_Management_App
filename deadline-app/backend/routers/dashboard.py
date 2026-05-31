@@ -1,15 +1,15 @@
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 from database import get_db
-from models.user import User
 from models.staff import Staff
 from models.document import Document, document_assignees
 from models.directive import Directive, directive_assignees
 from schemas.dashboard import DashboardResponse, TaskSummary, StaffSummary
-from routers.deps import get_current_user
+from auth import CurrentUser
 from datetime import date
 from uuid import UUID
-from typing import Optional
 from services.scheduler import check_deadlines
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -18,12 +18,11 @@ URGENT_DAYS = 1
 RED_DAYS = 3
 YELLOW_DAYS = 7
 
+
 def get_urgency(deadline: Optional[date], is_recurring: bool) -> str:
     if is_recurring or not deadline:
         return "green"
-    
     days = (deadline - date.today()).days
-
     if days < 0:
         return "overdue"
     elif days <= URGENT_DAYS:
@@ -34,79 +33,85 @@ def get_urgency(deadline: Optional[date], is_recurring: bool) -> str:
         return "yellow"
     else:
         return "green"
-    
+
+
 def get_days_remaining(deadline: Optional[date], is_recurring: bool):
     if is_recurring or not deadline:
         return None
     return (deadline - date.today()).days
 
-def get_staff_names_for_doc(doc_id: UUID, db: Session) -> list[str]:
-    result = db.execute(
-        document_assignees.select().where(
-            document_assignees.c.document_id == doc_id
-        )
-    ).fetchall()
 
+async def get_staff_names_for_doc(doc_id: UUID, db: AsyncSession) -> list[str]:
+    result = await db.execute(
+        document_assignees.select().where(document_assignees.c.document_id == doc_id)
+    )
+    rows = result.fetchall()
     staff_names = []
-    for row in result:
-        staff = db.query(Staff).filter(Staff.id == row.staff_id).first()
+    for row in rows:
+        staff_result = await db.execute(select(Staff).where(Staff.id == row.staff_id))
+        staff = staff_result.scalars().first()
         if staff:
             staff_names.append(staff.short_name)
     return staff_names
 
-def get_staff_names_for_directive(dir_id: UUID, db: Session) -> list[str]:
-    result = db.execute(
-        directive_assignees.select().where(
-            directive_assignees.c.directive_id == dir_id
-        )
-    ).fetchall()
 
+async def get_staff_names_for_directive(dir_id: UUID, db: AsyncSession) -> list[str]:
+    result = await db.execute(
+        directive_assignees.select().where(directive_assignees.c.directive_id == dir_id)
+    )
+    rows = result.fetchall()
     staff_names = []
-    for row in result:
-        staff = db.query(Staff).filter(Staff.id == row.staff_id).first()
+    for row in rows:
+        staff_result = await db.execute(select(Staff).where(Staff.id == row.staff_id))
+        staff = staff_result.scalars().first()
         if staff:
             staff_names.append(staff.short_name)
     return staff_names
 
-def get_doc_ids_for_staff(staff_id: UUID, db: Session) -> list:
-    rows = db.execute(
-        document_assignees.select().where(
-            document_assignees.c.staff_id == staff_id
-        )
-    ).fetchall()
+
+async def get_doc_ids_for_staff(staff_id: UUID, db: AsyncSession) -> list:
+    result = await db.execute(
+        document_assignees.select().where(document_assignees.c.staff_id == staff_id)
+    )
+    rows = result.fetchall()
     return [row.document_id for row in rows]
 
-def get_dir_ids_for_staff(staff_id: UUID, db: Session) -> list:
-    rows = db.execute(
-        directive_assignees.select().where(
-            directive_assignees.c.staff_id == staff_id
-        )
-    ).fetchall()
+
+async def get_dir_ids_for_staff(staff_id: UUID, db: AsyncSession) -> list:
+    result = await db.execute(
+        directive_assignees.select().where(directive_assignees.c.staff_id == staff_id)
+    )
+    rows = result.fetchall()
     return [row.directive_id for row in rows]
+
 
 @router.get("/", response_model=DashboardResponse)
 async def get_dashboard(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    check_deadlines()
-    
-    #get all active tasks - not done or cancelled
+    await check_deadlines()
+
     active_statuses = ["pending", "in_progress", "overdue"]
 
-    documents = db.query(Document).filter(
-        Document.status.in_(active_statuses),
-        Document.content_summary.isnot(None),
-        Document.content_summary != ""
-    ).all()
+    doc_result = await db.execute(
+        select(Document).where(
+            Document.status.in_(active_statuses),
+            Document.content_summary.isnot(None),
+            Document.content_summary != ""
+        )
+    )
+    documents = doc_result.scalars().all()
 
-    directives = db.query(Directive).filter(
-        Directive.status.in_(active_statuses),
-        Directive.directive_content.isnot(None),
-        Directive.directive_content != ""
-    ).all()
+    dir_result = await db.execute(
+        select(Directive).where(
+            Directive.status.in_(active_statuses),
+            Directive.directive_content.isnot(None),
+            Directive.directive_content != ""
+        )
+    )
+    directives = dir_result.scalars().all()
 
-    #build task summaries
     all_tasks = []
 
     for doc in documents:
@@ -120,7 +125,7 @@ async def get_dashboard(
             status=doc.status,
             is_recurring=doc.is_recurring,
             source="document",
-            staff_names=get_staff_names_for_doc(doc.id, db)
+            staff_names=await get_staff_names_for_doc(doc.id, db)
         ))
 
     for directive in directives:
@@ -134,18 +139,10 @@ async def get_dashboard(
             status=directive.status,
             is_recurring=directive.is_recurring,
             source="directive",
-            staff_names=get_staff_names_for_directive(directive.id, db)
+            staff_names=await get_staff_names_for_directive(directive.id, db)
         ))
 
-    # group by urgency
-    grouped = {
-        "overdue": [],
-        "red_urgent": [],
-        "red": [],
-        "yellow": [],
-        "green": []
-    }
-
+    grouped = {"overdue": [], "red_urgent": [], "red": [], "yellow": [], "green": []}
     for task in all_tasks:
         grouped[task.urgency].append(task)
 
@@ -165,68 +162,89 @@ async def get_dashboard(
         }
     )
 
+
 @router.get("/staff", response_model=list[StaffSummary])
 async def get_staff(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    staff_list = db.query(Staff).filter(Staff.is_active).all()
+    staff_result = await db.execute(select(Staff).where(Staff.is_active == True))
+    staff_list = staff_result.scalars().all()
     result = []
 
     for staff in staff_list:
-        #count pending tasks from documents
-        doc_ids = get_doc_ids_for_staff(staff.id, db)
+        doc_ids = await get_doc_ids_for_staff(staff.id, db)
+        dir_ids = await get_dir_ids_for_staff(staff.id, db)
 
-        # directives
-        dir_ids = get_dir_ids_for_staff(staff.id, db)
+        if doc_ids:
+            doc_pending_result = await db.execute(
+                select(func.count(Document.id)).where(
+                    Document.id.in_(doc_ids),
+                    Document.status.in_(["pending", "in_progress"])
+                )
+            )
+            doc_pending = doc_pending_result.scalar() or 0
+        else:
+            doc_pending = 0
 
-        doc_pending = db.query(Document).filter(
-            Document.id.in_(doc_ids),
-            Document.status.in_(["pending", "in_progress"])
-        ).count() if doc_ids else 0
+        if dir_ids:
+            dir_pending_result = await db.execute(
+                select(func.count(Directive.id)).where(
+                    Directive.id.in_(dir_ids),
+                    Directive.status.in_(["pending", "in_progress"])
+                )
+            )
+            dir_pending = dir_pending_result.scalar() or 0
+        else:
+            dir_pending = 0
 
-        dir_pending = db.query(Directive).filter(
-            Directive.id.in_(dir_ids),
-            Directive.status.in_(["pending", "in_progress"])
-        ).count() if dir_ids else 0
+        if doc_ids:
+            doc_overdue_result = await db.execute(
+                select(func.count(Document.id)).where(
+                    Document.id.in_(doc_ids),
+                    Document.status == "overdue"
+                )
+            )
+            doc_overdue = doc_overdue_result.scalar() or 0
+        else:
+            doc_overdue = 0
 
-        pending_count = doc_pending + dir_pending
-
-        doc_overdue = db.query(Document).filter(
-            Document.id.in_(doc_ids),
-            Document.status == "overdue"
-        ).count() if doc_ids else 0
-
-        dir_overdue = db.query(Directive).filter(
-            Directive.id.in_(dir_ids),
-            Directive.status == "overdue"
-        ).count() if dir_ids else 0
-
-        overdue_count = doc_overdue + dir_overdue
+        if dir_ids:
+            dir_overdue_result = await db.execute(
+                select(func.count(Directive.id)).where(
+                    Directive.id.in_(dir_ids),
+                    Directive.status == "overdue"
+                )
+            )
+            dir_overdue = dir_overdue_result.scalar() or 0
+        else:
+            dir_overdue = 0
 
         result.append(StaffSummary(
             id=staff.id,
             short_name=staff.short_name,
             full_name=staff.full_name,
-            pending_count=pending_count,
-            overdue_count=overdue_count
+            pending_count=doc_pending + dir_pending,
+            overdue_count=doc_overdue + dir_overdue
         ))
-    
+
     return result
+
 
 @router.get("/staff/{staff_id}", response_model=list[TaskSummary])
 async def get_staff_tasks(
     staff_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    doc_ids = get_doc_ids_for_staff(staff_id, db)
-    dir_ids = get_dir_ids_for_staff(staff_id, db)
+    doc_ids = await get_doc_ids_for_staff(staff_id, db)
+    dir_ids = await get_dir_ids_for_staff(staff_id, db)
 
     tasks = []
 
     for doc_id in doc_ids:
-        doc = db.query(Document).filter(Document.id == doc_id).first()
+        result = await db.execute(select(Document).where(Document.id == doc_id))
+        doc = result.scalars().first()
         if doc:
             tasks.append(TaskSummary(
                 id=doc.id,
@@ -237,11 +255,12 @@ async def get_staff_tasks(
                 status=doc.status,
                 is_recurring=doc.is_recurring,
                 source="document",
-                staff_names=get_staff_names_for_doc(doc.id, db)
+                staff_names=await get_staff_names_for_doc(doc.id, db)
             ))
 
     for dir_id in dir_ids:
-        directive = db.query(Directive).filter(Directive.id == dir_id).first()
+        result = await db.execute(select(Directive).where(Directive.id == dir_id))
+        directive = result.scalars().first()
         if directive:
             tasks.append(TaskSummary(
                 id=directive.id,
@@ -252,11 +271,10 @@ async def get_staff_tasks(
                 status=directive.status,
                 is_recurring=directive.is_recurring,
                 source="directive",
-                staff_names=get_staff_names_for_directive(directive.id, db)
+                staff_names=await get_staff_names_for_directive(directive.id, db)
             ))
 
     return sorted(tasks, key=lambda t: (
         t.days_remaining is None,
         t.days_remaining if t.days_remaining is not None else 999
     ))
-
